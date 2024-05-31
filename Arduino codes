@@ -1,0 +1,71 @@
+#include <Wire.h>
+#define BLYNK_TEMPLATE_ID "lfCqnmC62VpUMpEBKPLUehmg5uKjcSOA"
+#define BLYNK_TEMPLATE_NAME "Watering Project"
+#include <LiquidCrystal_I2C.h>
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+char auth[] = "lfCqnmC62VpUMpEBKPLUehmg5uKjcSOA"; //blynk eşleştirme token ı
+char ssid[] = "Çağla"; // WIFI name
+char pass[] = "12345678"; 
+
+BlynkTimer timer;
+bool Relay = 0;
+
+#define sensor A0
+#define waterPump D3
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(waterPump, OUTPUT);
+  digitalWrite(waterPump, HIGH);
+  lcd.init();
+  lcd.backlight();
+
+  Blynk.begin(auth, ssid, pass, "blynk.cloud", 80);
+
+  lcd.setCursor(1, 0);
+  lcd.print("Sistem Yukleniyor");
+  for (int a = 0; a <= 19; a++) {
+    lcd.setCursor(a, 1);
+    lcd.print(".");
+    delay(500);
+  }
+  lcd.clear();
+
+  timer.setInterval(1000L, soilMoistureSensor);
+}
+
+BLYNK_WRITE(V1) { //blink database sunucuya göndermek için sanal pin
+  Relay = param.asInt();
+
+  if (Relay == 1) { //röle durumu 
+    digitalWrite(waterPump, LOW);
+    lcd.setCursor(0, 1);
+    lcd.print("Motor ACILDI");
+  } else {
+    digitalWrite(waterPump, HIGH);
+    lcd.setCursor(0, 1);
+    lcd.print("Motor KAPALI");
+  }
+}
+
+void soilMoistureSensor() {
+  int value = analogRead(sensor);
+  value = map(value, 0, 1024, 0, 100);
+  value = (value - 100) * -1;
+
+  Blynk.virtualWrite(V0, value);
+  lcd.setCursor(0, 0);
+  lcd.print("NEM ORANI :");
+  lcd.print(value);
+  lcd.print(" ");
+
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
